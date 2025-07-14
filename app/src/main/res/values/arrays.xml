@@ -1,14 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="camera_resolution_entries">
-        <item>High</item>
-        <item>Medium</item>
-        <item>Low</item>
+    <string-array name="stream_fps_entries">
+        <item>1 FPS</item>
+        <item>2 FPS</item>
+        <item>5 FPS</item>
+        <item>10 FPS</item>
+        <item>15 FPS</item>
+        <item>20 FPS</item>
+        <item>30 FPS</item>
+        <item>Auto (max)</item>
     </string-array>
-
-    <string-array name="camera_resolution_values">
-        <item>high</item>
-        <item>medium</item>
-        <item>low</item>
+    <string-array name="stream_fps_values">
+        <item>1</item>
+        <item>2</item>
+        <item>5</item>
+        <item>10</item>
+        <item>15</item>
+        <item>20</item>
+        <item>30</item>
+        <item>0</item>
     </string-array>
 </resources>
+

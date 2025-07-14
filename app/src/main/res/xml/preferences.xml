@@ -3,18 +3,21 @@
     <PreferenceCategory
         android:title="Stream Camera Quality"
         android:summary="Change to prevent phone getting too hot">
+<!--        <ListPreference-->
+<!--            android:key="camera_resolution"-->
+<!--            android:title="Camera Resolution"-->
+<!--            android:summary="%s"-->
+<!--            android:defaultValue="low"-->
+<!--            android:entries="@array/camera_resolution_entries"-->
+<!--            android:entryValues="@array/camera_resolution_values" />-->
         <ListPreference
-            android:key="camera_resolution"
-            android:title="Camera Resolution"
+            android:key="stream_fps"
+            android:title="Stream FPS"
             android:summary="%s"
-            android:defaultValue="low"
-            android:entries="@array/camera_resolution_entries"
-            android:entryValues="@array/camera_resolution_values" />
-        <EditTextPreference
-                android:key="stream_delay"
-                android:title="Stream Delay (33ms = 30fps)"
-                android:defaultValue="33"
-                android:inputType="number" />
+            android:defaultValue="5"
+            android:entries="@array/stream_fps_entries"
+            android:entryValues="@array/stream_fps_values" />
+
     </PreferenceCategory>
     <PreferenceCategory
         android:title="HTTP Basic Authentication"

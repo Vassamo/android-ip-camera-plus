@@ -4,9 +4,29 @@
 # Ignore Gradle build output directory
 build
 
+.idea/
+*.iml
+local.properties
+
+*.log
+*.tmp
+
+captures/
+.externalNativeBuild/
+
+app/build/
+**/build/
+
+.DS_Store
+Thumbs.db
+
 local.properties
 gradle/wrapper/gradle-wrapper.jar
 app/release
+app/keystore.jks
 signing.properties
 app/signing-key.jks
 certificates
+
+*.jks
+*.p12

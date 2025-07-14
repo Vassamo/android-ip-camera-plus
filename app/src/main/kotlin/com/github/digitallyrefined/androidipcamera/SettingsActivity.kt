@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import androidx.appcompat.app.AppCompatActivity
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 
@@ -26,64 +27,22 @@ class SettingsActivity : AppCompatActivity() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.preferences, rootKey)
 
-            // Set up certificate selection preference
-            findPreference<Preference>("certificate_path")?.apply {
-                setOnPreferenceClickListener {
-                    val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                        type = "*/*"
-                        addCategory(Intent.CATEGORY_OPENABLE)
-                    }
-                    startActivityForResult(
-                        Intent.createChooser(intent, "Select TLS Certificate"),
-                        PICK_CERTIFICATE_FILE
-                    )
-                    true
-                }
+            // Dodajemy dynamiczną listę FPS
+            val context = preferenceManager.context
+            val supportedFps = CameraUtils.getAvailableFpsOptions(context)
+
+            val fpsPref = ListPreference(context).apply {
+                key = "stream_fps"
+                title = "Camera Stream FPS"
+                entries = supportedFps.map { "$it FPS" }.toTypedArray()
+                entryValues = supportedFps.map { it.toString() }.toTypedArray()
+                summary = "%s"
+                setDefaultValue(supportedFps.min().toString())
             }
 
-            // Add listener for camera resolution changes
-            findPreference<Preference>("camera_resolution")?.apply {
-                setOnPreferenceChangeListener { preference, newValue ->
-                    // Save the new value first
-                    preferenceManager.sharedPreferences?.edit()?.apply {
-                        putString("camera_resolution", newValue.toString())
-                        apply()
-                    }
-
-                    // Delay the restart to ensure preference is saved
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        val intent = Intent(requireActivity(), MainActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        }
-                        startActivity(intent)
-                        Runtime.getRuntime().exit(0)
-                    }, 500) // 500ms delay
-
-                    true
-                }
-            }
-
-            findPreference<Preference>("camera_resolution")?.apply {
-                setOnPreferenceChangeListener { preference, newValue ->
-                    // Save the new value first
-                    preferenceManager.sharedPreferences?.edit()?.apply {
-                        putString("camera_resolution", newValue.toString())
-                        apply()
-                    }
-
-                    // Delay the restart to ensure preference is saved
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        val intent = Intent(requireActivity(), MainActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        }
-                        startActivity(intent)
-                        Runtime.getRuntime().exit(0)
-                    }, 500) // 500ms delay
-
-                    true
-                }
-            }
+            preferenceScreen.addPreference(fpsPref)
         }
+
 
         override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
             if (requestCode == PICK_CERTIFICATE_FILE && resultCode == Activity.RESULT_OK) {

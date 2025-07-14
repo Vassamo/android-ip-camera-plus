@@ -29,6 +29,7 @@ import java.io.ByteArrayOutputStream
 import java.io.PrintWriter
 import android.view.WindowManager
 import android.content.Intent
+import android.graphics.Bitmap
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import android.widget.Toast
@@ -36,7 +37,8 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import android.util.Base64
 import android.util.Size
-import android.net.Uri
+import androidx.core.net.toUri
+import android.widget.ImageView
 import androidx.preference.PreferenceManager
 import java.security.KeyStore
 import javax.net.ssl.KeyManagerFactory
@@ -44,6 +46,7 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLServerSocket
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
+import androidx.core.view.isVisible
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
@@ -62,63 +65,65 @@ class MainActivity : AppCompatActivity() {
 
     private var lastFrameTime = 0L
 
-    private fun processImage(image: ImageProxy) {
-        // Get delay from preferences
-        val prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
-        val delay = prefs.getString("stream_delay", "33")?.toLongOrNull() ?: 33L
-
-        // Check if enough time has passed since last frame
-        val currentTime = System.currentTimeMillis()
-        if (currentTime - lastFrameTime < delay) {
-            image.close()
-            return
-        }
-        lastFrameTime = currentTime
-
-        // Convert YUV_420_888 to NV21
-        val yBuffer = image.planes[0].buffer
-        val uBuffer = image.planes[1].buffer
-        val vBuffer = image.planes[2].buffer
-
-        val ySize = yBuffer.remaining()
-        val uSize = uBuffer.remaining()
-        val vSize = vBuffer.remaining()
-
-        val nv21 = ByteArray(ySize + uSize + vSize)
-
-        yBuffer.get(nv21, 0, ySize)
-        vBuffer.get(nv21, ySize, vSize)
-        uBuffer.get(nv21, ySize + vSize, uSize)
-
-        // Convert NV21 to JPEG
-        val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
-        val jpegStream = ByteArrayOutputStream()
-        yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 80, jpegStream)
-        val jpegBytes = jpegStream.toByteArray()
-
-        synchronized(clients) {
-            clients.removeAll { client ->
-                try {
-                    // Send MJPEG frame
-                    client.writer.print("--frame\r\n")
-                    client.writer.print("Content-Type: image/jpeg\r\n")
-                    client.writer.print("Content-Length: ${jpegBytes.size}\r\n\r\n")
-                    client.writer.flush()
-                    client.outputStream.write(jpegBytes)
-                    client.outputStream.flush()
-                    false
-                } catch (e: IOException) {
-                    Log.e(TAG, "Error sending frame: ${e.message}")
-                    try {
-                        client.socket.close()
-                    } catch (e: IOException) {
-                        Log.e(TAG, "Error closing client: ${e.message}")
-                    }
-                    true
-                }
-            }
-        }
-    }
+//    private fun processImage(image: ImageProxy) {
+//        // Get delay from preferences
+//        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+//        val fps = prefs.getString("stream_fps", "5")?.toIntOrNull() ?: 5
+//        val delay = 1000L / fps
+//
+//
+//        // Check if enough time has passed since last frame
+//        val currentTime = System.currentTimeMillis()
+//        if (currentTime - lastFrameTime < delay) {
+//            image.close()
+//            return
+//        }
+//        lastFrameTime = currentTime
+//
+//        // Convert YUV_420_888 to NV21
+//        val yBuffer = image.planes[0].buffer
+//        val uBuffer = image.planes[1].buffer
+//        val vBuffer = image.planes[2].buffer
+//
+//        val ySize = yBuffer.remaining()
+//        val uSize = uBuffer.remaining()
+//        val vSize = vBuffer.remaining()
+//
+//        val nv21 = ByteArray(ySize + uSize + vSize)
+//
+//        yBuffer.get(nv21, 0, ySize)
+//        vBuffer.get(nv21, ySize, vSize)
+//        uBuffer.get(nv21, ySize + vSize, uSize)
+//
+//        // Convert NV21 to JPEG
+//        val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
+//        val jpegStream = ByteArrayOutputStream()
+//        yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 80, jpegStream)
+//        val jpegBytes = jpegStream.toByteArray()
+//
+//        synchronized(clients) {
+//            clients.removeAll { client ->
+//                try {
+//                    // Send MJPEG frame
+//                    client.writer.print("--frame\r\n")
+//                    client.writer.print("Content-Type: image/jpeg\r\n")
+//                    client.writer.print("Content-Length: ${jpegBytes.size}\r\n\r\n")
+//                    client.writer.flush()
+//                    client.outputStream.write(jpegBytes)
+//                    client.outputStream.flush()
+//                    false
+//                } catch (e: IOException) {
+//                    Log.e(TAG, "Error sending frame: ${e.message}")
+//                    try {
+//                        client.socket.close()
+//                    } catch (e: IOException) {
+//                        Log.e(TAG, "Error closing client: ${e.message}")
+//                    }
+//                    true
+//                }
+//            }
+//        }
+//    }
 
     private fun handleMaxClients(socket: Socket): Boolean {
         synchronized(clients) {
@@ -150,7 +155,7 @@ class MainActivity : AppCompatActivity() {
             serverSocket = if (certificatePath != null) {
                 // SSL server socket creation code...
                 try {
-                    val uri = Uri.parse(certificatePath)
+                    val uri = certificatePath.toUri()
                     // Copy the certificate to app's private storage
                     val privateFile = File(filesDir, "certificate.p12")
                     try {
@@ -188,7 +193,7 @@ class MainActivity : AppCompatActivity() {
                             reuseAddress = true
                             soTimeout = 30000  // 30 seconds timeout
                         }
-                    } ?: ServerSocket(STREAM_PORT)  // Fallback if inputStream is null
+                    }  // Fallback if inputStream is null
                 } catch (e: Exception) {
                     lifecycleScope.launch(Dispatchers.Main) {
                         Log.e(TAG, "Failed to create SSL server socket: ${e.message}")
@@ -222,7 +227,6 @@ class MainActivity : AppCompatActivity() {
                     val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
 
                     // Get auth credentials from preferences using androidx.preference
-                    val prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
                     val username = prefs.getString("username", "") ?: ""
                     val password = prefs.getString("password", "") ?: ""
 
@@ -317,6 +321,7 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.hide()
 
         // Set full screen flags
+        @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
                 or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
@@ -350,7 +355,7 @@ class MainActivity : AppCompatActivity() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val useCertificate = prefs.getBoolean("use_certificate", false)
         val protocol = if (useCertificate) "https" else "http"
-        ipAddressText.text = "$protocol://$ipAddress:$STREAM_PORT"
+        ipAddressText.text = getString(R.string.stream_url, protocol, ipAddress, STREAM_PORT)
 
         // Add toggle preview button
         findViewById<Button>(R.id.hidePreviewButton).setOnClickListener {
@@ -385,9 +390,9 @@ class MainActivity : AppCompatActivity() {
                 startCamera()
             } else {
                 // Show which permissions are missing
-                val missingPermissions = REQUIRED_PERMISSIONS.filter {
-                    ContextCompat.checkSelfPermission(baseContext, it) != PackageManager.PERMISSION_GRANTED
-                }
+//                val missingPermissions = REQUIRED_PERMISSIONS.filter {
+//                    ContextCompat.checkSelfPermission(baseContext, it) != PackageManager.PERMISSION_GRANTED
+//                }
                 Toast.makeText(this,
                     "Please allow camera permissions",
                     Toast.LENGTH_LONG).show()
@@ -411,22 +416,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hidePreview() {
-        val viewFinder = viewBinding.viewFinder
+        val previewImageView = findViewById<ImageView>(R.id.previewImageView)
+
         val rootView = viewBinding.root
         val ipAddressText = findViewById<TextView>(R.id.ipAddressText)
         val settingsButton = findViewById<Button>(R.id.settingsButton)
         val switchCameraButton = findViewById<TextView>(R.id.switchCameraButton)
         val hidePreviewButton = findViewById<Button>(R.id.hidePreviewButton)
 
-        if (viewFinder.visibility == View.VISIBLE) {
-            viewFinder.visibility = View.GONE
+        if (previewImageView.isVisible) {
+            previewImageView.visibility = View.GONE
             ipAddressText.visibility = View.GONE
             settingsButton.visibility = View.GONE
             switchCameraButton.visibility = View.GONE
             hidePreviewButton.visibility = View.GONE
             rootView.setBackgroundColor(android.graphics.Color.BLACK)
         } else {
-            viewFinder.visibility = View.VISIBLE
+            previewImageView.visibility = View.VISIBLE
             ipAddressText.visibility = View.VISIBLE
             settingsButton.visibility = View.VISIBLE
             switchCameraButton.visibility = View.VISIBLE
@@ -441,18 +447,15 @@ class MainActivity : AppCompatActivity() {
         cameraProviderFuture.addListener({
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
 
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
-                }
+            val preview = Preview.Builder().build()
+
 
             imageAnalyzer = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
                 .apply {
                     // Get resolution from preferences
-                    val prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(this@MainActivity)
+                    val prefs = PreferenceManager.getDefaultSharedPreferences(this@MainActivity)
                     val resolutionSelector = ResolutionSelector.Builder().apply {
                         when (prefs.getString("camera_resolution", "low")) {
                             "high" -> setResolutionStrategy(
@@ -475,12 +478,29 @@ class MainActivity : AppCompatActivity() {
                 .build()
                 .also { analysis ->
                     analysis.setAnalyzer(cameraExecutor) { image ->
-                        if (clients.isNotEmpty()) {  // Only process if there are clients
-                            processImage(image)
+                        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+                        val fps = prefs.getString("stream_fps", "5")?.toIntOrNull() ?: 5
+                        val delay = if (fps <= 0) 0L else 1000L / fps
+                        val currentTime = System.currentTimeMillis()
+
+                        if (currentTime - lastFrameTime >= delay) {
+                            lastFrameTime = currentTime
+
+                            val bitmap = imageProxyToBitmap(image)
+
+                            runOnUiThread {
+                                findViewById<ImageView>(R.id.previewImageView).setImageBitmap(bitmap)
+                            }
+
+                            if (clients.isNotEmpty()) {
+                                processImageFromBitmap(bitmap)
+                            }
                         }
+
                         image.close()
                     }
                 }
+
 
             try {
                 cameraProvider.unbindAll()
@@ -502,6 +522,52 @@ class MainActivity : AppCompatActivity() {
         serverSocket?.close()
         closeClientConnection()
     }
+
+    private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
+        val yBuffer = image.planes[0].buffer
+        val uBuffer = image.planes[1].buffer
+        val vBuffer = image.planes[2].buffer
+
+        val ySize = yBuffer.remaining()
+        val uSize = uBuffer.remaining()
+        val vSize = vBuffer.remaining()
+
+        val nv21 = ByteArray(ySize + uSize + vSize)
+        yBuffer.get(nv21, 0, ySize)
+        vBuffer.get(nv21, ySize, vSize)
+        uBuffer.get(nv21, ySize + vSize, uSize)
+
+        val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
+        val out = ByteArrayOutputStream()
+        yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 90, out)
+        val imageBytes = out.toByteArray()
+        return android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+    }
+
+    private fun processImageFromBitmap(bitmap: Bitmap) {
+        val stream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
+        val jpegBytes = stream.toByteArray()
+
+        synchronized(clients) {
+            clients.removeAll { client ->
+                try {
+                    client.writer.print("--frame\r\n")
+                    client.writer.print("Content-Type: image/jpeg\r\n")
+                    client.writer.print("Content-Length: ${jpegBytes.size}\r\n\r\n")
+                    client.writer.flush()
+                    client.outputStream.write(jpegBytes)
+                    client.outputStream.flush()
+                    false
+                } catch (e: IOException) {
+                    client.socket.close()
+                    true
+                }
+            }
+        }
+    }
+
+
 
     companion object {
         private const val TAG = "MainActivity"
