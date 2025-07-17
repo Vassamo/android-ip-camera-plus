@@ -19,6 +19,16 @@
             android:entryValues="@array/stream_fps_values" />
 
     </PreferenceCategory>
+
+    <PreferenceCategory android:title="Streaming">
+        <SwitchPreferenceCompat
+            android:key="stream_enabled"
+            android:title="Włącz MJPEG stream"
+            android:defaultValue="false"
+            android:summary="Włącz serwer MJPEG w tle" />
+    </PreferenceCategory>
+
+
     <PreferenceCategory
         android:title="HTTP Basic Authentication"
         android:summary="Leave blank for no username/password">

@@ -1,63 +1,53 @@
 package com.github.digitallyrefined.androidipcamera
 
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.preference.ListPreference
-import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SwitchPreferenceCompat
 
 class SettingsActivity : AppCompatActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Ładujemy fragment jako zawartość aktywności
         supportFragmentManager
             .beginTransaction()
             .replace(android.R.id.content, SettingsFragment())
             .commit()
     }
+}
 
-    class SettingsFragment : PreferenceFragmentCompat() {
-        companion object {
-            private const val PICK_CERTIFICATE_FILE = 1
-        }
+// Fragment zawierający preferencje (ustawienia)
+class SettingsFragment : PreferenceFragmentCompat() {
 
-        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-            setPreferencesFromResource(R.xml.preferences, rootKey)
+    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
+        setPreferencesFromResource(R.xml.preferences, rootKey)
 
-            // Dodajemy dynamiczną listę FPS
-            val context = preferenceManager.context
-            val supportedFps = CameraUtils.getAvailableFpsOptions(context)
+        val streamSwitch = findPreference<SwitchPreferenceCompat>("stream_enabled")
+        val fpsPref = findPreference<ListPreference>("stream_fps")
 
-            val fpsPref = ListPreference(context).apply {
-                key = "stream_fps"
-                title = "Camera Stream FPS"
-                entries = supportedFps.map { "$it FPS" }.toTypedArray()
-                entryValues = supportedFps.map { it.toString() }.toTypedArray()
-                summary = "%s"
-                setDefaultValue(supportedFps.min().toString())
+        // Zablokuj zmianę FPS jeśli włączony streaming
+        val isStreamingEnabled = preferenceManager.sharedPreferences?.getBoolean("stream_enabled", false) ?: false
+        fpsPref?.isEnabled = !isStreamingEnabled
+
+        streamSwitch?.setOnPreferenceChangeListener { _, newValue ->
+            val enabled = newValue as Boolean
+            fpsPref?.isEnabled = !enabled
+
+            // Włącz/wyłącz usługę MJPEG
+            val context = requireContext()
+            val intent = Intent(context, MjpegStreamService::class.java)
+            if (enabled) {
+                ContextCompat.startForegroundService(context, intent)
+            } else {
+                context.stopService(intent)
             }
 
-            preferenceScreen.addPreference(fpsPref)
-        }
-
-
-        override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-            if (requestCode == PICK_CERTIFICATE_FILE && resultCode == Activity.RESULT_OK) {
-                data?.data?.let { uri ->
-                    // Store the certificate path
-                    val certificatePath = uri.toString()
-                    preferenceManager.sharedPreferences?.edit()?.apply {
-                        putString("certificate_path", certificatePath)
-                        apply()
-                    }
-                    // Update the preference summary
-                    findPreference<Preference>("certificate_path")?.summary = certificatePath
-                }
-            }
-            super.onActivityResult(requestCode, resultCode, data)
+            true
         }
     }
 }

@@ -2,10 +2,27 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
+appcompat = "1.7.1"
+cameraView = "1.4.2"
+constraintlayout = "2.2.1"
+coreKtx = "1.16.0"
 guava = "33.3.1-jre"
+kotlinxCoroutinesAndroid = "1.10.2"
+lifecycleRuntimeKtx = "2.9.1"
+material = "1.12.0"
 
 [libraries]
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "cameraView" }
+androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraView" }
+androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "cameraView" }
+androidx-constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraintlayout" }
+androidx-core-ktx = { module = "androidx.core:core-ktx", version = "1.12.0" }
+camera-view = { module = "androidx.camera:camera-view", version.ref = "cameraView" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version = "1.7.3" }
+lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+material = { module = "com.google.android.material:material", version.ref = "material" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "2.0.21" }
